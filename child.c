@@ -1,4 +1,4 @@
-#include "os_linux.h"
+#include "os.h"
 
 void Reverse(char* line, size_t n) {
   int is_new_line = 0;

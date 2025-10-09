@@ -1,4 +1,4 @@
-#include "os_linux.h"
+#include "os.h"
 
 void WriteToPipe(pipe_t fd, const char *line, size_t n) {
   size_t written = 0;

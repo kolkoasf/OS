@@ -1,8 +1,8 @@
-#include "os_linux.h"
+#include "os.h"
 
 int CreatePipe(pipe_t new_pipe[2]) { return pipe(new_pipe); }
 
-proc_info_t CreateProc(const char* file, char* const argv[], char* const envp[],
+proc_info_t CreateProc(const char* file, char* argv[], char* envp[],
                        pipe_t stdin_pipe, pipe_t stdout_pipe) {
   proc_info_t result;
 
