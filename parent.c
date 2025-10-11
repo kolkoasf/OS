@@ -54,14 +54,14 @@ int main(int argc, char *argv[], char *envp[]) {
   char *args[] = {"child", NULL};
 
   proc_info_t child_odd = CreateProc("./child", args, envp, p_odd[0], fd_odd);
-  if (child_odd.pid == (pid_t)-1) {
+  if (child_odd.pid == -1) {
     perror("error while create odd child process");
     TerminateProc(1);
   }
 
   proc_info_t child_even =
       CreateProc("./child", args, envp, p_even[0], fd_even);
-  if (child_even.pid == (pid_t)-1) {
+  if (child_even.pid == -1) {
     perror("error while create even child process");
     TerminateProc(1);
   }
