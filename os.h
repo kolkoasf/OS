@@ -15,7 +15,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-typedef int pipe_t;
+typedef int typedef int pipe_t;
 typedef int pid_t;
 
 typedef struct {

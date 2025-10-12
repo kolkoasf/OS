@@ -66,25 +66,17 @@ int main(int argc, char *argv[], char *envp[]) {
     TerminateProc(1);
   }
 
-  CloseObject(fd_odd);
-  CloseObject(fd_even);
-  CloseObject(p_odd[0]);
-  CloseObject(p_even[0]);
-
   char *line = NULL;
   int line_num = 1;
   size_t capacity = 0;
-  pipe_t curr_pipe;
   ssize_t s;
 
   while ((s = DoGetline(&line, &capacity, stdin)) != -1) {
     if (line_num % 2 != 0) {
-      curr_pipe = p_odd[1];
+      WriteToPipe(p_odd[1], line, (size_t)s);
     } else {
-      curr_pipe = p_even[1];
+      WriteToPipe(p_even[1], line, (size_t)s);
     }
-
-    WriteToPipe(curr_pipe, line, (size_t)s);
     line_num++;
   }
 

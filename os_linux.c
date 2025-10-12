@@ -1,6 +1,18 @@
 #include "os.h"
 
-int CreatePipe(pipe_t new_pipe[2]) { return pipe(new_pipe); }
+int CreatePipe(pipe_t new_pipe[2]) {
+  int res = pipe(new_pipe);
+  if (res == -1) {
+    return -1;
+  }
+  if (fcntl(new_pipe[0], F_SETFD, FD_CLOEXEC) == -1 ||
+      fcntl(new_pipe[1], F_SETFD, FD_CLOEXEC) == -1) {
+    close(new_pipe[0]);
+    close(new_pipe[1]);
+    return -1;
+  }
+  return res;
+}
 
 proc_info_t CreateProc(const char* file, char* argv[], char* envp[],
                        pipe_t stdin_pipe, pipe_t stdout_pipe) {
@@ -14,18 +26,22 @@ proc_info_t CreateProc(const char* file, char* argv[], char* envp[],
   }
 
   if (pid == 0) {
-    if (stdin_pipe != -1) {
-      if (dup2(stdin_pipe, STDIN_FILENO) == -1) {
-        perror("error while dup2 stdin");
-        TerminateProc(1);
-      }
+    if (dup2(stdin_pipe, STDIN_FILENO) == -1) {
+      perror("error while dup2 stdin");
+      TerminateProc(1);
+    }
+    if (dup2(stdout_pipe, STDOUT_FILENO) == -1) {
+      perror("error while dup2 stdout");
+      TerminateProc(1);
     }
 
-    if (stdout_pipe != -1) {
-      if (dup2(stdout_pipe, STDOUT_FILENO) == -1) {
-        perror("error while dup2 stdout");
-        TerminateProc(1);
-      }
+    if (fcntl(stdin_pipe, F_SETFD, 0) == -1) {
+      perror("error while fcntl clear CLOEXEC flag from stdin_pipe");
+      TerminateProc(1);
+    }
+    if (fcntl(stdout_pipe, F_SETFD, 0) == -1) {
+      perror("error while fcntl clear CLOEXEC flag from stdout_pipe");
+      TerminateProc(1);
     }
 
     execve(file, argv, envp);
