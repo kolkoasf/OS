@@ -1,94 +1,66 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "helpers.h"
 
-static void Reverse(char* line) {
-  size_t len = strlen(line);
-  if (len == 0) {
-    return;
+static int InvertLine(const char* input, int input_len, char* output) {
+  int out_idx = 0;
+
+  int line_end = input_len;
+  if (input_len > 0 && input[input_len - 1] == '\n') {
+    line_end = input_len - 1;
   }
 
-  int has_newline = (line[len - 1] == '\n');
-  if (has_newline) {
-    len--;
+  for (int i = line_end - 1; i >= 0; i--) {
+    output[out_idx++] = input[i];
   }
 
-  for (size_t i = 0, j = len - 1; i < j; i++, j--) {
-    char tmp = line[i];
-    line[i] = line[j];
-    line[j] = tmp;
+  if (out_idx < MAX_LINE_LENGTH - 1) {
+    output[out_idx++] = '\n';
   }
 
-  if (has_newline) {
-    line[len] = '\n';
-    line[len + 1] = '\0';
-  } else {
-    line[len] = '\0';
-  }
+  return out_idx;
 }
 
 int main(int argc, char* argv[]) {
   child_config_t config;
-  if (InitChildConfig(argc, argv, &config) == -1) {
-    return EXIT_FAILURE;
-  }
+  if (InitChildConfig(argc, argv, &config) == -1) return EXIT_FAILURE;
 
-  ipc_handles_t ipc = SetupChildIpc(&config);
-  if (ipc.data_ready == NULL) {
-    return EXIT_FAILURE;
-  }
+  ipc_handles_t ipc = InitChildIpc(config.shm_name, SHM_SIZE);
+  if (ipc.shm_fd == -1) return EXIT_FAILURE;
 
   int output_fd = CreateOutputFile(&config);
   if (output_fd == -1) {
-    CleanupChildIpcSafe(&ipc);
+    CleanupIpc(&ipc, SHM_SIZE);
     return EXIT_FAILURE;
   }
 
-  if (SignalReady(&config) == -1) {
-    fprintf(stderr, "[Child%d] Ошибка отправки сигнала готовности\n",
-            config.id);
-    CloseObject(output_fd);
-    CleanupChildIpcSafe(&ipc);
-    return EXIT_FAILURE;
-  }
+  shared_buffer_t* shared_buf = (shared_buffer_t*)ipc.shm_addr;
 
-  char buffer[MAX_LINE_LENGTH];
+  semaphore_t sem_read =
+      (config.id == 1) ? ipc.sem_child1_read : ipc.sem_child2_read;
 
   while (1) {
-    if (WaitSemaphore(ipc.data_ready) == -1) {
-      fprintf(stderr, "[Child%d] Ошибка ожидания данных\n", config.id);
-      break;
-    }
+    if (WaitSemaphore(sem_read) == -1) break;
 
-    shared_buffer_t* shared_buf = (shared_buffer_t*)ipc.input_mmap.addr;
-
-    if (shared_buf->shutdown_flag == 1) {
-      break;
-    }
+    if (shared_buf->shutdown_flag == 1) break;
 
     int line_len = shared_buf->line_length;
     if (line_len > 0 && line_len < MAX_LINE_LENGTH) {
-      memcpy(buffer, shared_buf->data, line_len + 1);
-      buffer[line_len] = '\0';
+      char output_buffer[MAX_LINE_LENGTH];
+      int output_len = InvertLine(shared_buf->data, line_len, output_buffer);
 
-      Reverse(buffer);
-
-      int reversed_len = strlen(buffer);
-      if (WriteToOutput(output_fd, buffer, reversed_len, config.id) == -1) {
-        PostSemaphore(ipc.processed);
-        break;
+      if (output_len > 0) {
+        WriteToOutput(output_fd, output_buffer, output_len);
       }
     }
 
-    if (PostSemaphore(ipc.processed) == -1) {
-      fprintf(stderr, "[Child%d] Ошибка сигнализации завершения\n", config.id);
-      break;
-    }
+    if (PostSemaphore(ipc.sem_ack) == -1) break;
   }
 
-  CloseObject(output_fd);
-  CleanupChildIpcSafe(&ipc);
+  CloseOutputFile(output_fd);
+  CleanupIpc(&ipc, SHM_SIZE);
 
   return EXIT_SUCCESS;
 }

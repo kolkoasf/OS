@@ -1,51 +1,53 @@
+#pragma once
+
 #include "os.h"
 
 #define MAX_LINE_LENGTH 1024
-#define MAPPED_FILE_SIZE (100 * MAX_LINE_LENGTH)
+#define SHM_NAME "/ipc_buffer"
+#define SHM_SIZE sizeof(shared_buffer_t)
 
 typedef struct {
-  volatile int line_length;
   volatile int shutdown_flag;
+  volatile int line_length;
   char data[MAX_LINE_LENGTH];
 } shared_buffer_t;
 
 typedef struct {
-  semaphore_t data_ready;
-  semaphore_t processed;
-  mmap_info_t input_mmap;
-  pipe_t input_fd;
-  const char *data_ready_name;
-  const char *processed_name;
+  int shm_fd;
+  void* shm_addr;
+  semaphore_t sem_parent_write;
+  semaphore_t sem_child1_read;
+  semaphore_t sem_child2_read;
+  semaphore_t sem_ack;
 } ipc_handles_t;
 
 typedef struct {
   int id;
-  const char *input_mmap_path;
-  const char *output_file_path;
+  const char* shm_name;
+  const char* output_file;
 } child_config_t;
 
-ipc_handles_t InitIpcHandles(int child_id, const char *input_path,
-                             const char *data_ready_name,
-                             const char *processed_name);
+ipc_handles_t InitParentIpc(const char* shm_name, size_t shm_size);
 
-void CleanupChildIpc(ipc_handles_t *handles);
+ipc_handles_t InitChildIpc(const char* shm_name, size_t shm_size);
 
-int SendDataToChild(shared_buffer_t *buf, const char *data, size_t len,
-                    semaphore_t sem_ready, semaphore_t sem_processed);
+void CleanupIpc(ipc_handles_t* handles, size_t shm_size);
 
-void SignalChildShutdown(shared_buffer_t *buf, semaphore_t sem_ready);
+void CleanupIpcFull(ipc_handles_t* handles, const char* shm_name,
+                    size_t shm_size);
 
-void WaitForChildren(process_id_t pid1, process_id_t pid2, int *status1,
-                     int *status2);
+int SendDataToChild(shared_buffer_t* buf, const char* data, size_t len,
+                    int child_id, ipc_handles_t* ipc);
 
-int InitChildConfig(int argc, char *argv[], child_config_t *config);
+void SignalChildShutdown(shared_buffer_t* buf, ipc_handles_t* ipc);
 
-ipc_handles_t SetupChildIpc(const child_config_t *config);
+void WaitForChildren(process_id_t pid1, process_id_t pid2, int* status1,
+                     int* status2);
 
-void CleanupChildIpcSafe(ipc_handles_t *handles);
+int InitChildConfig(int argc, char* argv[], child_config_t* config);
 
-int CreateOutputFile(const child_config_t *config);
+int CreateOutputFile(const child_config_t* config);
 
-int SignalReady(const child_config_t *config);
+int WriteToOutput(int fd, const char* data, size_t data_len);
 
-int WriteToOutput(int fd, const char *data, size_t data_len, int child_id);
+int CloseOutputFile(int fd);

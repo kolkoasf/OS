@@ -1,8 +1,8 @@
 #pragma once
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 #define _GNU_SOURCE
@@ -10,9 +10,9 @@
 #ifdef _WIN32
 
 #else
-#include <fcntl.h>
 #include <semaphore.h>
 #include <signal.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -20,14 +20,6 @@
 
 typedef int pipe_t;
 typedef pid_t process_id_t;
-typedef void* mmap_handle_t;
-typedef void (*signal_handler_t)(int);
-
-typedef struct {
-  void* addr;
-  size_t size;
-  int fd;
-} mmap_info_t;
 
 typedef sem_t* semaphore_t;
 
@@ -49,19 +41,15 @@ int CloseObject(pipe_t fd);
 
 ssize_t WriteToObject(pipe_t fd, const void* line, size_t count);
 
-int TruncateFile(pipe_t fd, off_t size);
+void* MapSharedMemory(int fd, size_t size);
 
-pipe_t CreateMappedFile(const char* path, size_t size);
+int UnmapMemory(void* addr, size_t size);
 
-mmap_info_t MapFileToMemory(pipe_t fd, size_t size, int prot);
+int CreateSharedMemory(const char* name, size_t size);
 
-int UnmapFile(mmap_info_t info);
+int OpenSharedMemory(const char* name);
 
-int SyncMappedFile(mmap_info_t info);
-
-int RegisterSignalHandler(int sig, signal_handler_t handler);
-
-int SendSignal(process_id_t pid, int sig);
+int UnlinkSharedMemory(const char* name);
 
 semaphore_t CreateNamedSemaphore(const char* name, int initial_value);
 
