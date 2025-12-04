@@ -9,43 +9,28 @@
 #define MAX_LIBS 2
 
 typedef int (*PrimeCountFunc)(int, int);
-typedef char* (*TranslateFunc)(long);
+typedef char* (*TranslationFunc)(long);
 
 typedef struct {
-  DynamicLib libs[MAX_LIBS];
-  PrimeCountFunc prime_funcs[MAX_LIBS];
-  TranslateFunc translate_funcs[MAX_LIBS];
-  int current_impl;
-} LibSet;
+  DynamicLib lib;
+  PrimeCountFunc prime_func;
+  TranslationFunc translation_func;
+} LibImpl;
 
-static LibSet primes = {{0}, {0}, {0}, 0};
-static LibSet translates = {{0}, {0}, {0}, 0};
-
-static void switch_impl_primes(void) {
-  int new_impl = 1 - primes.current_impl;
-  if (primes.prime_funcs[new_impl]) {
-    primes.current_impl = new_impl;
-    printf("Switched PrimeCount to impl %d (%s)\n\n", new_impl + 1,
-           new_impl == 0 ? "Naive" : "Sieve");
-  } else {
-    fprintf(stderr, "Error: Alternative implementation not available\n");
-  }
-}
-
-static void switch_impl_translates(void) {
-  int new_impl = 1 - translates.current_impl;
-  if (translates.translate_funcs[new_impl]) {
-    translates.current_impl = new_impl;
-    printf("Switched Translate to impl %d (%s)\n\n", new_impl + 1,
-           new_impl == 0 ? "Binary" : "Ternary");
-  } else {
-    fprintf(stderr, "Error: Alternative implementation not available\n");
-  }
-}
+static LibImpl impl[MAX_LIBS];
+static int current_impl = 0;
 
 static void handle_cmd_0(void) {
-  switch_impl_primes();
-  switch_impl_translates();
+  int new_impl = 1 - current_impl;
+
+  if (!impl[new_impl].prime_func || !impl[new_impl].translation_func) {
+    fprintf(stderr, "Error: Alternative implementation not available\n");
+    return;
+  }
+
+  current_impl = new_impl;
+  printf("Switched to impl %d (%s)\n\n", current_impl + 1,
+         current_impl == 0 ? "Light" : "Hard");
 }
 
 static void handle_cmd_1(int argc, char** argv) {
@@ -70,13 +55,14 @@ static void handle_cmd_1(int argc, char** argv) {
     return;
   }
 
-  if (!primes.prime_funcs[primes.current_impl]) {
+  if (!impl[current_impl].prime_func) {
     fprintf(stderr, "Error: PrimeCount not loaded\n");
     return;
   }
 
-  int result = primes.prime_funcs[primes.current_impl](A, B);
-  printf("PrimeCount(%d, %d) = %d\n", A, B, result);
+  int result = impl[current_impl].prime_func(A, B);
+  printf("PrimeCount(%d, %d) = %d (%s)\n", A, B, result,
+         current_impl == 0 ? "naive" : "sieve");
 }
 
 static void handle_cmd_2(int argc, char** argv) {
@@ -87,22 +73,23 @@ static void handle_cmd_2(int argc, char** argv) {
 
   char* endptr;
   long num = strtol(argv[1], &endptr, 10);
+
   if (*endptr != '\0') {
     fprintf(stderr, "Error: Invalid number '%s'\n", argv[1]);
     return;
   }
 
-  if (!translates.translate_funcs[translates.current_impl]) {
+  if (!impl[current_impl].translation_func) {
     fprintf(stderr, "Error: Translation function not loaded\n");
     return;
   }
 
-  char* result = translates.translate_funcs[translates.current_impl](num);
+  char* result = impl[current_impl].translation_func(num);
 
   if (result) {
     printf("Decimal: %ld\n", num);
-    if (translates.current_impl == 0) {
-      printf("Binary:  %s\n", result);
+    if (current_impl == 0) {
+      printf("Binary: %s\n", result);
     } else {
       printf("Ternary: %s\n", result);
     }
@@ -113,53 +100,48 @@ static void handle_cmd_2(int argc, char** argv) {
 }
 
 int main(void) {
-  char path_primes[256];
-  char path_translates[256];
-  snprintf(path_primes, sizeof(path_primes), "%slibprimes%s", LIB_PATH_PREFIX,
+  char path_light[256];
+  char path_hard[256];
+
+  snprintf(path_light, sizeof(path_light), "%sliblight%s", LIB_PATH_PREFIX,
            LIB_EXT);
-  snprintf(path_translates, sizeof(path_translates), "%slibtranslation%s",
-           LIB_PATH_PREFIX, LIB_EXT);
+  snprintf(path_hard, sizeof(path_hard), "%slibhard%s", LIB_PATH_PREFIX,
+           LIB_EXT);
 
-  DynamicLib lib_primes_handle = open_library(path_primes);
-  if (!lib_primes_handle) {
-    fprintf(stderr, "Failed to load libprimes: %s\n", get_last_error());
+  impl[0].lib = open_library(path_light);
+  if (!impl[0].lib) {
+    fprintf(stderr, "Failed to load lib_light: %s\n", get_last_error());
     return 1;
   }
 
-  DynamicLib lib_translates_handle = open_library(path_translates);
-  if (!lib_translates_handle) {
-    fprintf(stderr, "Failed to load libtranslation: %s\n", get_last_error());
-    close_library(lib_primes_handle);
+  impl[1].lib = open_library(path_hard);
+  if (!impl[1].lib) {
+    fprintf(stderr, "Failed to load lib_hard: %s\n", get_last_error());
+    close_library(impl[0].lib);
     return 1;
   }
 
-  primes.libs[0] = lib_primes_handle;
-  primes.libs[1] = lib_primes_handle;
-  translates.libs[0] = lib_translates_handle;
-  translates.libs[1] = lib_translates_handle;
+  impl[0].prime_func =
+      (PrimeCountFunc)get_symbol_library(impl[0].lib, "PrimeCount");
+  impl[0].translation_func =
+      (TranslationFunc)get_symbol_library(impl[0].lib, "translation");
 
-  primes.prime_funcs[0] =
-      (PrimeCountFunc)get_symbol_library(lib_primes_handle, "PrimeCount");
-  primes.prime_funcs[1] =
-      (PrimeCountFunc)get_symbol_library(lib_primes_handle, "PrimeCount_Sieve");
+  impl[1].prime_func =
+      (PrimeCountFunc)get_symbol_library(impl[1].lib, "PrimeCount");
+  impl[1].translation_func =
+      (TranslationFunc)get_symbol_library(impl[1].lib, "translation");
 
-  translates.translate_funcs[0] = (TranslateFunc)get_symbol_library(
-      lib_translates_handle, "Translate_Binary");
-  translates.translate_funcs[1] = (TranslateFunc)get_symbol_library(
-      lib_translates_handle, "Translate_Ternary");
-
-  if (!primes.prime_funcs[0] || !primes.prime_funcs[1] ||
-      !translates.translate_funcs[0] || !translates.translate_funcs[1]) {
+  if (!impl[0].prime_func || !impl[0].translation_func || !impl[1].prime_func ||
+      !impl[1].translation_func) {
     fprintf(stderr, "Failed to load symbols: %s\n", get_last_error());
-    close_library(lib_primes_handle);
-    close_library(lib_translates_handle);
+    close_library(impl[0].lib);
+    close_library(impl[1].lib);
     return 1;
   }
 
-  printf("\n=== Program 2 (Runtime Dynamic Loading) ===\n");
   printf(
-      "Commands: 0 | 1 A B | 2 number | help | "
-      "exit\n\n");
+      "\n=== Program 2 (Dynamic Loading - Switchable Implementations) ===\n");
+  printf("Commands: 0 | 1 A B | 2 number | help | exit\n\n");
 
   char line[BUFFER_SIZE];
   while (read_line(line)) {
@@ -169,6 +151,7 @@ int main(void) {
 
     char** argv;
     int argc = parse_line(line, &argv);
+
     if (argc <= 0) {
       continue;
     }
@@ -177,10 +160,12 @@ int main(void) {
       free_argv(argc, argv);
       break;
     } else if (!strcmp(argv[0], "help")) {
-      printf("0: Switch implementations (Binary <-> Ternary)\n");
+      printf("0: Switch implementations (Light <-> Hard)\n");
       printf("1 A B: PrimeCount in range [A,B]\n");
-      printf("2 number: Translate decimal (currently: %s)\n",
-             translates.current_impl == 0 ? "Binary" : "Ternary");
+      printf("2 number: Translate decimal\n");
+      printf("   Current: %s (PrimeCount) + %s (translation)\n",
+             current_impl == 0 ? "Light" : "Hard",
+             current_impl == 0 ? "Binary" : "Ternary");
       printf("exit: Exit program\n");
     } else if (!strcmp(argv[0], "0")) {
       handle_cmd_0();
@@ -195,9 +180,8 @@ int main(void) {
     free_argv(argc, argv);
   }
 
-  close_library(lib_primes_handle);
-  close_library(lib_translates_handle);
-
+  close_library(impl[0].lib);
+  close_library(impl[1].lib);
   printf("Goodbye!\n");
   return 0;
 }

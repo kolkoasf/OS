@@ -5,66 +5,58 @@
 #include "cli_parser.h"
 #include "contract.h"
 
-typedef struct {
-  int argc;
-  char** argv;
-} Args;
-
-static void handle_cmd_1(Args args) {
-  if (args.argc < 3) {
+static void handle_cmd_1(int argc, char** argv) {
+  if (argc < 3) {
     fprintf(stderr, "Error: PrimeCount needs 2 args: A B\n");
     return;
   }
 
   int error_a, error_b;
-  int A = safe_strtol(args.argv[1], &error_a);
-  int B = safe_strtol(args.argv[2], &error_b);
+  int A = safe_strtol(argv[1], &error_a);
+  int B = safe_strtol(argv[2], &error_b);
 
   if (error_a) {
     fprintf(stderr, "Error: Invalid argument A '%s' - not a valid integer\n",
-            args.argv[1]);
+            argv[1]);
     return;
   }
 
   if (error_b) {
     fprintf(stderr, "Error: Invalid argument B '%s' - not a valid integer\n",
-            args.argv[2]);
+            argv[2]);
     return;
   }
 
   int result = PrimeCount(A, B);
-  printf("PrimeCount(%d, %d) = %d\n", A, B, result);
+  printf("PrimeCount(%d, %d) = %d (naive)\n", A, B, result);
 }
 
-static void handle_cmd_2(Args args) {
-  if (args.argc < 2) {
+static void handle_cmd_2(int argc, char** argv) {
+  if (argc < 2) {
     fprintf(stderr, "Error: Translate needs 1 arg: number\n");
     return;
   }
 
-  int error;
-  long num = strtol(args.argv[1], NULL, 10);
-  if (error) {
-    fprintf(stderr, "Error: Invalid number '%s'\n", args.argv[1]);
+  char* endptr;
+  long num = strtol(argv[1], &endptr, 10);
+
+  if (*endptr != '\0') {
+    fprintf(stderr, "Error: Invalid number '%s'\n", argv[1]);
     return;
   }
 
-  char* binary = Translate_Binary(num);
-  char* ternary = Translate_Ternary(num);
+  char* result = translation(num);
 
-  if (binary) {
-    printf("Decimal: %ld\n", num);
-    printf("Binary:  %s\n", binary);
-    free(binary);
-  }
-  if (ternary) {
-    printf("Ternary: %s\n", ternary);
-    free(ternary);
+  printf("Decimal: %ld\n", num);
+
+  if (result) {
+    printf("Binary: %s\n", result);
+    free(result);
   }
 }
 
 int main(void) {
-  printf("\n=== Program 1 (Compile-time Linking) ===\n");
+  printf("\n=== Program 1 (Static Linking - Light Implementation) ===\n");
   printf("Commands: 1 A B | 2 number | help | exit\n\n");
 
   char line[BUFFER_SIZE];
@@ -73,29 +65,29 @@ int main(void) {
       continue;
     }
 
-    Args args;
-    int argc = parse_line(line, &args.argv);
+    char** argv;
+    int argc = parse_line(line, &argv);
+
     if (argc <= 0) {
       continue;
     }
 
-    args.argc = argc;
-
-    if (!strcmp(args.argv[0], "exit")) {
-      free_argv(argc, args.argv);
+    if (!strcmp(argv[0], "exit")) {
+      free_argv(argc, argv);
       break;
-    } else if (!strcmp(args.argv[0], "help")) {
-      printf("1 A B: PrimeCount in range [A,B]\n");
-      printf("2 number: Translate decimal to binary and ternary\n");
-    } else if (!strcmp(args.argv[0], "1")) {
-      handle_cmd_1(args);
-    } else if (!strcmp(args.argv[0], "2")) {
-      handle_cmd_2(args);
+    } else if (!strcmp(argv[0], "help")) {
+      printf("1 A B: PrimeCount (naive) in range [A,B]\n");
+      printf("2 number: Translate decimal to binary\n");
+      printf("exit: Exit program\n");
+    } else if (!strcmp(argv[0], "1")) {
+      handle_cmd_1(argc, argv);
+    } else if (!strcmp(argv[0], "2")) {
+      handle_cmd_2(argc, argv);
     } else {
-      printf("Unknown: %s\n", args.argv[0]);
+      printf("Unknown: %s\n", argv[0]);
     }
 
-    free_argv(argc, args.argv);
+    free_argv(argc, argv);
   }
 
   printf("Goodbye!\n");
