@@ -1,0 +1,51 @@
+execve("./bin/program1", ["./bin/program1"], 0x7ffc4fb031d0 /* 35 vars */) = 0
+brk(NULL)                               = 0x55f1f9031000
+arch_prctl(0x3001 /* ARCH_??? */, 0x7ffe09626010) = -1 EINVAL (Invalid argument)
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7ff262c06000
+access("/etc/ld.so.preload", R_OK)      = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+newfstatat(3, "", {st_mode=S_IFREG|0644, st_size=30076, ...}, AT_EMPTY_PATH) = 0
+mmap(NULL, 30076, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7ff262bfe000
+close(3)                                = 0
+openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0P\237\2\0\0\0\0\0"..., 832) = 832
+pread64(3, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+pread64(3, "\4\0\0\0 \0\0\0\5\0\0\0GNU\0\2\0\0\300\4\0\0\0\3\0\0\0\0\0\0\0"..., 48, 848) = 48
+pread64(3, "\4\0\0\0\24\0\0\0\3\0\0\0GNU\0O{\f\225\\=\201\327\312\301P\32$\230\266\235"..., 68, 896) = 68
+newfstatat(3, "", {st_mode=S_IFREG|0755, st_size=2220400, ...}, AT_EMPTY_PATH) = 0
+pread64(3, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+mmap(NULL, 2264656, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7ff2629d5000
+mprotect(0x7ff2629fd000, 2023424, PROT_NONE) = 0
+mmap(0x7ff2629fd000, 1658880, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x28000) = 0x7ff2629fd000
+mmap(0x7ff262b92000, 360448, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1bd000) = 0x7ff262b92000
+mmap(0x7ff262beb000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x215000) = 0x7ff262beb000
+mmap(0x7ff262bf1000, 52816, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7ff262bf1000
+close(3)                                = 0
+mmap(NULL, 12288, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7ff2629d2000
+arch_prctl(ARCH_SET_FS, 0x7ff2629d2740) = 0
+set_tid_address(0x7ff2629d2a10)         = 41198
+set_robust_list(0x7ff2629d2a20, 24)     = 0
+rseq(0x7ff2629d30e0, 0x20, 0, 0x53053053) = 0
+mprotect(0x7ff262beb000, 16384, PROT_READ) = 0
+mprotect(0x55f1c00e4000, 4096, PROT_READ) = 0
+mprotect(0x7ff262c40000, 8192, PROT_READ) = 0
+prlimit64(0, RLIMIT_STACK, NULL, {rlim_cur=8192*1024, rlim_max=RLIM64_INFINITY}) = 0
+munmap(0x7ff262bfe000, 30076)           = 0
+newfstatat(1, "", {st_mode=S_IFCHR|0620, st_rdev=makedev(0x88, 0x9), ...}, AT_EMPTY_PATH) = 0
+getrandom("\x7e\x6d\x41\x89\x41\xd2\x19\x02", 8, GRND_NONBLOCK) = 8
+brk(NULL)                               = 0x55f1f9031000
+brk(0x55f1f9052000)                     = 0x55f1f9052000
+write(1, "\n", 1)                       = 1
+write(1, "=== Program 1 (Static Linking - "..., 58) = 58
+write(1, "Commands: 1 A B | 2 number | hel"..., 41) = 41
+write(1, "\n", 1)                       = 1
+newfstatat(0, "", {st_mode=S_IFCHR|0620, st_rdev=makedev(0x88, 0x9), ...}, AT_EMPTY_PATH) = 0
+read(0, "1 1 20\n", 1024)               = 7
+write(1, "PrimeCount(1, 20) = 8 (naive)\n", 30) = 30
+read(0, "2 5\n", 1024)                  = 4
+write(1, "Decimal: 5\n", 11)            = 11
+write(1, "Binary: 101\n", 12)           = 12
+read(0, "exit\n", 1024)                 = 5
+write(1, "Goodbye!\n", 9)               = 9
+exit_group(0)                           = ?
++++ exited with 0 +++
